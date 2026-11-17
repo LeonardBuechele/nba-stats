@@ -1,0 +1,1383 @@
+/* =====================================================================
+   NBA STATS
+   Idee: Die Seite übernimmt die Farbe des gewählten Teams (--team).
+   Hintergrund = Hallenbeton, Text = Navy, Motiv = Spielfeldlinien.
+   ===================================================================== */
+
+:root {
+  --paper: #e7e9ec;        /* Hallenbeton */
+  --paper-raised: #f5f6f7; /* Flächen, die leicht hervortreten */
+  --ink: #0f1d33;          /* Navy für Text */
+  --ink-soft: #57627a;     /* Nebentext */
+  --line: rgba(15, 29, 51, 0.14);
+  --ball: #e5702a;         /* nur für den Ball */
+  --team: #1d428a;         /* wird per JS auf die Teamfarbe gesetzt */
+  --on-team: #ffffff;
+
+  --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --text: "Instrument Sans", "Segoe UI", sans-serif;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);
+  --gutter: clamp(20px, 4vw, 56px);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, p, dl, dd, ol, ul {
+  margin: 0;
+}
+
+ol, ul {
+  padding: 0;
+  list-style: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+:focus-visible {
+  outline: 2px solid var(--team);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+/* ----------------- MASKEN-REVEAL -----------------
+   Text gleitet aus einer unsichtbaren Kante nach oben ins Bild */
+.mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding-bottom: 0.04em;
+}
+
+.mask > span {
+  display: inline-block;
+  transform: translateY(105%);
+  transition: transform 0.9s var(--ease-out);
+  transition-delay: var(--d, 0s);
+}
+
+.is-in .mask > span {
+  transform: none;
+}
+
+/* ----------------- SEITENWECHSEL ----------------- */
+.view {
+  display: none;
+  min-height: 100vh;
+  padding-bottom: 96px;
+}
+
+.view.is-active {
+  display: block;
+}
+
+.wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--team);
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+/* ----------------- NAVIGATION ----------------- */
+.nav {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: 72px;
+  padding: 0 var(--gutter);
+  transition: color 0.4s ease;
+}
+
+/* Nach dem Scrollen bekommt die Navigation einen Milchglas-Hintergrund */
+body.scrolled .nav {
+  background: rgba(231, 233, 236, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Über farbigen Bändern wird die Navigation weiß und durchsichtig */
+body.nav-light .nav {
+  color: var(--on-team);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: 0.01em;
+}
+
+.wordmark svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  transition: transform 0.8s var(--ease-out);
+}
+
+.wordmark:hover svg {
+  transform: rotate(180deg);
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 15px;
+}
+
+.crumbs .sep {
+  opacity: 0.35;
+}
+
+.crumbs button {
+  opacity: 0.7;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: opacity 0.2s, background-size 0.35s var(--ease-out);
+}
+
+.crumbs button:hover {
+  opacity: 1;
+  background-size: 100% 1px;
+}
+
+.crumbs .current {
+  font-weight: 600;
+}
+
+/* ----------------- BUTTON ----------------- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 28px;
+  border-radius: 28px;
+  background: var(--ink);
+  color: var(--paper-raised);
+  font-weight: 600;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform 0.3s var(--ease-out);
+}
+
+/* Kreis in Ballfarbe wächst beim Hover von der Mausposition aus */
+.btn::before {
+  content: "";
+  position: absolute;
+  left: var(--mx, 50%);
+  top: var(--my, 50%);
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--ball);
+  transform: scale(0);
+  transition: transform 0.6s var(--ease-out);
+  z-index: -1;
+}
+
+.btn:hover::before {
+  transform: scale(60);
+}
+
+/* ================= STARTSEITE ================= */
+.view-home {
+  position: relative;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-rows: 1fr auto auto;
+  column-gap: 40px;
+  padding: 96px var(--gutter) 0;
+  overflow: hidden;
+}
+
+.view-home.is-active {
+  display: grid;
+}
+
+.mega {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: end;
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(100px, min(19vw, 30vh), 300px);
+  line-height: 0.8;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 2;
+}
+
+.mega-line {
+  display: block;
+  overflow: hidden;
+  padding-top: 0.06em;
+}
+
+.mega-word .char {
+  display: inline-block;
+  transform: translateY(100%);
+  animation: rise 1.1s var(--ease-out) forwards;
+  animation-delay: calc(0.15s + var(--i) * 0.06s);
+}
+
+/* zweite Zeile nur als Kontur */
+.mega-line + .mega-line .mega-word {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--ink);
+}
+
+@keyframes rise {
+  to { transform: none; }
+}
+
+.court {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+  width: 100%;
+  max-height: 76vh;
+  overflow: visible;
+}
+
+.court-lines path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-opacity: 0.55;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 1.6s var(--ease-in-out) forwards;
+}
+
+.court-lines path:nth-child(2) { animation-delay: 0.1s; }
+.court-lines path:nth-child(3) { animation-delay: 0.2s; }
+.court-lines path:nth-child(4) { animation-delay: 0.5s; }
+.court-lines path:nth-child(5) { animation-delay: 0.35s; }
+.court-lines path:nth-child(6) { animation-delay: 0.6s; }
+.court-lines path:nth-child(7) { animation-delay: 0.7s; stroke-opacity: 0.25; }
+.court-lines path:nth-child(8) { animation-delay: 0.45s; }
+.court-lines path:nth-child(9) { animation-delay: 0.8s; }
+.court-lines path:nth-child(10) { animation-delay: 0.9s; stroke-width: 4; }
+
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.hoop {
+  opacity: 0;
+  animation: show 0.4s ease 1.1s forwards;
+}
+
+.rim {
+  fill: none;
+  stroke: var(--ball);
+  stroke-width: 3;
+}
+
+.net {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-opacity: 0.6;
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+
+.net.swish {
+  animation: swish 0.7s var(--ease-out);
+}
+
+@keyframes swish {
+  30% { transform: scaleY(1.3) scaleX(0.9); }
+  60% { transform: scaleY(0.92) scaleX(1.05); }
+}
+
+@keyframes show {
+  to { opacity: 1; }
+}
+
+.ball {
+  opacity: 0;
+}
+
+.ball circle {
+  fill: var(--ball);
+}
+
+.ball path {
+  fill: none;
+  stroke: #3b1d0c;
+  stroke-width: 1.2;
+}
+
+.home-copy {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  padding: 32px 0 36px;
+  max-width: 640px;
+  opacity: 0;
+  animation: show 0.8s ease 0.9s forwards;
+}
+
+.home-copy p {
+  font-size: 19px;
+  max-width: 32ch;
+}
+
+.ticker {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  margin: 0 calc(var(--gutter) * -1);
+  border-top: 1px solid var(--line);
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.ticker-track {
+  display: inline-flex;
+  padding: 14px 0;
+  animation: marquee 40s linear infinite;
+}
+
+.ticker:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 48px;
+}
+
+.ticker-item em {
+  font-style: normal;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.ticker-item::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ball);
+}
+
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+
+/* ================= ÜBERSCHRIFTEN DER SEITEN ================= */
+.view-title {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(72px, 12vw, 180px);
+  line-height: 0.85;
+  text-transform: uppercase;
+  padding-top: 120px;
+}
+
+/* ================= SAISONS ================= */
+.season-list {
+  margin-top: 40px;
+  border-top: 1px solid var(--line);
+}
+
+.season-row {
+  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.season-row button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  padding: 18px 0;
+  text-align: left;
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform 0.9s var(--ease-out), opacity 0.6s ease;
+  transition-delay: calc(0.25s + var(--i) * 0.08s);
+}
+
+.is-in .season-row button {
+  transform: none;
+  opacity: 1;
+}
+
+/* Nach dem Einblenden: andere Zeilen treten beim Hover zurück */
+.is-settled .season-row button {
+  transition-delay: 0s;
+}
+
+.is-settled .season-list:hover .season-row button {
+  opacity: 0.28;
+}
+
+.is-settled .season-list:hover .season-row button:hover {
+  opacity: 1;
+}
+
+.season-year {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(56px, 9vw, 132px);
+  line-height: 0.9;
+  transition: transform 0.6s var(--ease-out);
+}
+
+.season-row button:hover .season-year {
+  transform: translateX(20px);
+}
+
+.season-champ {
+  text-align: right;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.season-champ strong {
+  display: block;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Bild folgt der Maus */
+.float-img {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 30;
+  width: 340px;
+  aspect-ratio: 4 / 3;
+  pointer-events: none;
+  clip-path: inset(50% 50% 50% 50% round 6px);
+  transition: clip-path 0.55s var(--ease-out);
+}
+
+.float-img.is-visible {
+  clip-path: inset(0 0 0 0 round 6px);
+}
+
+.float-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.25);
+  transition: transform 0.8s var(--ease-out);
+}
+
+.float-img.is-visible img {
+  transform: scale(1);
+}
+
+/* ================= TEAMS ================= */
+.teams-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.tabs {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+
+.tabs button {
+  position: relative;
+  z-index: 1;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  transition: color 0.3s;
+}
+
+.tabs button[aria-selected="true"] {
+  color: var(--paper-raised);
+}
+
+/* Gleitender Hintergrund hinter dem aktiven Tab */
+.tabs-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  transition: transform 0.5s var(--ease-out), width 0.5s var(--ease-out);
+}
+
+.team-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 40px;
+  margin-top: 40px;
+}
+
+.team-row {
+  border-bottom: 1px solid var(--line);
+  opacity: 0;
+  transform: translateY(24px);
+  animation: row-in 0.7s var(--ease-out) forwards;
+  animation-delay: calc(0.2s + var(--i) * 0.04s);
+}
+
+.team-row:nth-child(-n + 2) {
+  border-top: 1px solid var(--line);
+}
+
+@keyframes row-in {
+  to { opacity: 1; transform: none; }
+}
+
+.team-row button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px 1fr 52px;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 78px;
+  padding: 10px 14px;
+  text-align: left;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.35s;
+}
+
+/* Teamfarbe füllt die Zeile von links */
+.team-row button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--c);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.55s var(--ease-out);
+}
+
+.team-row button:hover,
+.team-row button:focus-visible {
+  color: #fff;
+}
+
+.team-row button:hover::before,
+.team-row button:focus-visible::before {
+  transform: scaleX(1);
+}
+
+.team-abbr {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.55;
+}
+
+.team-name {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(26px, 2.6vw, 38px);
+  line-height: 1;
+  transition: transform 0.5s var(--ease-out);
+}
+
+.team-row button:hover .team-name {
+  transform: translateX(8px);
+}
+
+.team-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #fff;
+  padding: 7px;
+  object-fit: contain;
+  transform: scale(0) rotate(-40deg);
+  transition: transform 0.55s var(--ease-out);
+}
+
+.team-row button:hover .team-logo,
+.team-row button:focus-visible .team-logo {
+  transform: none;
+}
+
+/* ================= FARBIGES BAND (Kader + Spieler) ================= */
+.band {
+  background: var(--team);
+  color: var(--on-team);
+  padding: 140px 0 48px;
+}
+
+.band-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+}
+
+.band-logo {
+  width: 104px;
+  height: 104px;
+  flex-shrink: 0;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 50%;
+  padding: 14px;
+  transform: scale(0) rotate(-90deg);
+  transition: transform 1s var(--ease-out) 0.2s;
+}
+
+.is-in .band-logo {
+  transform: none;
+}
+
+.band-title {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(56px, 9vw, 140px);
+  line-height: 0.85;
+  text-transform: uppercase;
+}
+
+.band-sub {
+  margin-top: 12px;
+  font-size: 17px;
+  opacity: 0.85;
+}
+
+/* ================= KADER-TABELLE ================= */
+.roster-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 40px 0 24px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(380px, 100%);
+  padding: 0 4px 8px;
+  border-bottom: 2px solid var(--line);
+  transition: border-color 0.3s;
+}
+
+.search:focus-within {
+  border-color: var(--team);
+}
+
+.search svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--ink-soft);
+  stroke-width: 1.8;
+}
+
+.search input {
+  flex: 1;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 18px;
+  color: var(--ink);
+  outline: none;
+}
+
+.hint {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.roster-head,
+.roster-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 2.4fr) 0.6fr 0.7fr 1.3fr 0.9fr 0.9fr 0.9fr;
+  align-items: center;
+  column-gap: 16px;
+  padding: 0 12px;
+}
+
+.roster-head {
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 10px;
+}
+
+.roster-head button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-align: left;
+  transition: color 0.2s;
+}
+
+.roster-head button:hover,
+.roster-head button.is-sorted {
+  color: var(--ink);
+}
+
+.roster-head .col-num {
+  justify-content: flex-end;
+}
+
+/* kleiner Pfeil zeigt Sortierrichtung */
+.roster-head button::after {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.3s var(--ease-out);
+}
+
+.roster-head button.is-sorted::after {
+  opacity: 1;
+}
+
+.roster-head button.is-asc::after {
+  transform: rotate(180deg);
+}
+
+.roster-row {
+  position: relative;
+  width: 100%;
+  min-height: 72px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  isolation: isolate;
+}
+
+.roster-row.is-new {
+  opacity: 0;
+  animation: row-in 0.6s var(--ease-out) forwards;
+  animation-delay: calc(0.35s + var(--i) * 0.04s);
+}
+
+.roster-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--paper-raised);
+  transform: scaleY(0);
+  transition: transform 0.35s var(--ease-out);
+}
+
+.roster-row:hover::before,
+.roster-row:focus-visible::before {
+  transform: none;
+}
+
+.cell-name {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-weight: 600;
+  font-size: 17px;
+  min-width: 0;
+}
+
+.cell-pos {
+  color: var(--ink-soft);
+}
+
+.cell-num {
+  text-align: right;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 24px;
+}
+
+/* Punkte mit kleinem Balken im Vergleich zum Topscorer */
+.cell-main {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
+
+.meter {
+  width: 100%;
+  height: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  background: var(--team);
+  transform-origin: left;
+  transform: scaleX(0);
+  animation: meter 1.2s var(--ease-out) forwards;
+  animation-delay: calc(0.5s + var(--i, 0) * 0.04s);
+}
+
+@keyframes meter {
+  to { transform: scaleX(var(--v)); }
+}
+
+.avatar {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--team);
+  transition: transform 0.4s var(--ease-out);
+}
+
+.roster-row:hover .avatar {
+  transform: scale(1.12);
+}
+
+.status {
+  margin-top: 32px;
+  color: var(--ink-soft);
+}
+
+.status:empty {
+  display: none;
+}
+
+/* Ladeanzeige: ein dribbelnder Ball */
+.status.is-loading::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 12px;
+  vertical-align: -3px;
+  border-radius: 50%;
+  background: var(--ball);
+  animation: dribble 0.55s cubic-bezier(0.5, 0, 0.5, 1) infinite alternate;
+}
+
+@keyframes dribble {
+  from { transform: translateY(-10px) scale(0.95, 1.05); }
+  to   { transform: translateY(4px) scale(1.1, 0.88); }
+}
+
+.status.is-error {
+  color: #b42318;
+}
+
+/* ================= SPIELER ================= */
+.band-player {
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.player-band {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: end;
+  gap: 40px;
+}
+
+.player-photo {
+  width: clamp(160px, 22vw, 280px);
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 6px 6px 0 0;
+  background: rgba(255, 255, 255, 0.12);
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 1.1s var(--ease-out) 0.15s;
+}
+
+.is-in .player-photo {
+  clip-path: inset(0 0 0 0);
+}
+
+.player-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  transform: scale(1.2);
+  transition: transform 1.4s var(--ease-out) 0.15s;
+}
+
+.is-in .player-photo img {
+  transform: none;
+}
+
+.player-photo .avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  color: var(--on-team);
+  font-size: clamp(60px, 9vw, 120px);
+}
+
+.player-id {
+  padding-bottom: 36px;
+  min-width: 0;
+}
+
+.player-first {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: clamp(28px, 4vw, 52px);
+  line-height: 1;
+}
+
+/* Platz nach oben für Akzente wie Ş oder Ü */
+.player-last .mask,
+.band-title .mask {
+  padding-top: 0.14em;
+  margin-top: -0.14em;
+}
+
+.player-last {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(64px, 11vw, 168px);
+  line-height: 0.85;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.player-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 36px;
+  margin-top: 24px;
+  opacity: 0;
+  transition: opacity 0.8s ease 0.6s;
+}
+
+.is-in .player-facts {
+  opacity: 1;
+}
+
+.player-facts dt {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.player-facts dd {
+  font-weight: 600;
+  font-size: 17px;
+}
+
+.big-numbers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--line);
+}
+
+.big-number {
+  padding: 36px 24px 32px 0;
+}
+
+.big-number + .big-number {
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+
+.big-number strong {
+  display: block;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(56px, 7vw, 104px);
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+.big-number:first-child strong {
+  color: var(--team);
+}
+
+.big-number span {
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.player-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 0 64px;
+}
+
+.block {
+  padding-top: 48px;
+}
+
+.block-wide {
+  grid-column: 1 / -1;
+}
+
+.block h3 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1;
+  margin-bottom: 24px;
+}
+
+/* Wurfquoten als Ringe, wie ein Korb von oben */
+.rings {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.ring {
+  text-align: center;
+}
+
+.ring-figure {
+  position: relative;
+  display: grid;
+  place-items: center;
+  max-width: 170px;
+  margin: 0 auto;
+}
+
+.ring svg {
+  width: 100%;
+  transform: rotate(-90deg);
+}
+
+.ring circle {
+  fill: none;
+  stroke-width: 7;
+}
+
+.ring .track {
+  stroke: var(--line);
+}
+
+.ring .value {
+  stroke: var(--team);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 1.6s var(--ease-out);
+}
+
+.ring-figure strong {
+  position: absolute;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(30px, 3.4vw, 44px);
+  font-variant-numeric: tabular-nums;
+}
+
+.ring p {
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+.ring small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.ranks li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.ranks li:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.ranks strong {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 26px;
+}
+
+.ranks small {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.ranks .rank-top strong {
+  color: var(--team);
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border-top: 1px solid var(--line);
+}
+
+.totals div {
+  padding: 18px 16px 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.totals dt {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.totals dd {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 64px;
+}
+
+.pager {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  max-width: 48%;
+}
+
+.pager-next {
+  text-align: right;
+  margin-left: auto;
+}
+
+.pager small {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.pager strong {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(28px, 4vw, 48px);
+  line-height: 1;
+  background-image: linear-gradient(var(--team), var(--team));
+  background-size: 0% 3px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  padding-bottom: 4px;
+  transition: background-size 0.5s var(--ease-out);
+}
+
+.pager-next strong {
+  background-position: 100% 100%;
+}
+
+.pager:hover strong {
+  background-size: 100% 3px;
+}
+
+.pager:empty {
+  visibility: hidden;
+}
+
+/* ================= FOOTER ================= */
+.footer {
+  padding: 28px var(--gutter);
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.footer a {
+  color: var(--ink);
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 960px) {
+  .view-home {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+  }
+  .court {
+    grid-column: 1;
+    grid-row: 1;
+    max-height: 40vh;
+    margin-top: 16px;
+  }
+  .mega {
+    grid-row: 2;
+  }
+  .home-copy {
+    grid-row: 3;
+  }
+  .ticker {
+    grid-row: 4;
+  }
+  .team-list {
+    grid-template-columns: 1fr;
+  }
+  .team-row:nth-child(2) {
+    border-top: 0;
+  }
+  .player-grid {
+    grid-template-columns: 1fr;
+  }
+  .totals {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .big-numbers {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .big-number:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .big-number:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 700px) {
+  .crumbs,
+  .hint,
+  .season-champ,
+  .float-img {
+    display: none;
+  }
+  .roster-head,
+  .roster-row {
+    grid-template-columns: minmax(0, 2.4fr) 0.9fr 0.8fr 0.8fr;
+    column-gap: 10px;
+  }
+  .col-pos, .cell-pos,
+  .col-hide, .cell-hide,
+  .col-games, .cell-games {
+    display: none;
+  }
+  .cell-name {
+    font-size: 15px;
+  }
+  .player-band {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .rings {
+    gap: 8px;
+  }
+  .totals {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Weniger Bewegung, wenn das im Betriebssystem eingestellt ist */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.001s !important;
+    transition-delay: 0s !important;
+  }
+  .ticker-track {
+    animation: none;
+  }
+}

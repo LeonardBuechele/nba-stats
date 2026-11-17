@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NBA Stats</title>
+
+  <!-- Big Shoulders Display = schmale Sport-Schrift für Zahlen & Namen, Instrument Sans = Fließtext -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./css/index.css" />
+</head>
+<body>
+
+  <!-- Farbfläche für Seitenübergänge (fährt in Teamfarbe über den Bildschirm) -->
+  <div class="wipe" id="wipe" aria-hidden="true"></div>
+
+  <!-- Bild, das auf der Saison-Seite dem Mauszeiger folgt -->
+  <div class="float-img" id="float-img" aria-hidden="true"><img src="" alt="" /></div>
+
+  <!-- ================= NAVIGATION ================= -->
+  <header class="nav">
+    <button class="wordmark" data-go="home" aria-label="Zur Startseite">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10.5" />
+        <path d="M1.5 12h21M12 1.5v21M4.6 4.6c3.4 3.6 3.4 11.2 0 14.8M19.4 4.6c-3.4 3.6-3.4 11.2 0 14.8" />
+      </svg>
+      <span>NBA Stats</span>
+    </button>
+    <nav class="crumbs" id="crumbs" aria-label="Pfad"></nav>
+  </header>
+
+  <main>
+    <!-- ================= START ================= -->
+    <section class="view view-home is-active" id="view-home">
+      <h1 class="mega" aria-label="NBA Stats">
+        <span class="mega-line"><span class="mega-word" data-split>NBA</span></span>
+        <span class="mega-line"><span class="mega-word" data-split>Stats</span></span>
+      </h1>
+
+      <!-- Halbfeld, das sich beim Laden selbst zeichnet -->
+      <svg class="court" viewBox="0 0 600 560" aria-hidden="true">
+        <g class="court-lines">
+          <path pathLength="1" d="M0 20H600" />
+          <path pathLength="1" d="M0 20V540M600 20V540" />
+          <path pathLength="1" d="M0 540H600" />
+          <path pathLength="1" d="M240 540A60 60 0 0 1 360 540" />
+          <path pathLength="1" d="M220 20V248H380V20" />
+          <path pathLength="1" d="M240 248A60 60 0 0 0 360 248" />
+          <path pathLength="1" class="dashed" d="M240 248A60 60 0 0 1 360 248" />
+          <path pathLength="1" d="M40 20V160A265 265 0 0 0 560 160V20" />
+          <path pathLength="1" d="M262 67A38 38 0 0 0 338 67" />
+          <path pathLength="1" d="M268 50H332" />
+        </g>
+        <g class="hoop">
+          <path class="net" d="M289 67l3 22h16l3-22M292 89l-2-22M296 89l-1-22M300 89v-22M304 89l1-22M308 89l2-22M290 76h20M291 83h18" />
+          <ellipse class="rim" cx="300" cy="67" rx="11" ry="4" />
+        </g>
+        <g class="ball" id="ball">
+          <circle r="13" />
+          <path d="M-13 0h26M0-13v26M-9-9c5 5 5 13 0 18M9-9c-5 5-5 13 0 18" />
+        </g>
+      </svg>
+
+      <div class="home-copy">
+        <p>Vier Saisons, dreißig Teams und die Zahlen jedes Spielers aus der Regular Season.</p>
+        <button class="btn" data-go="seasons">Saison auswählen</button>
+      </div>
+
+      <!-- Laufband wie bei einer Sportübertragung -->
+      <div class="ticker" aria-hidden="true">
+        <div class="ticker-track" id="ticker"></div>
+      </div>
+    </section>
+
+    <!-- ================= SAISONS ================= -->
+    <section class="view" id="view-seasons">
+      <div class="wrap">
+        <h2 class="view-title"><span class="mask"><span>Saison</span></span></h2>
+        <ol class="season-list" id="season-list"></ol>
+      </div>
+    </section>
+
+    <!-- ================= TEAMS ================= -->
+    <section class="view" id="view-teams">
+      <div class="wrap">
+        <div class="teams-head">
+          <h2 class="view-title"><span class="mask"><span>Team</span></span></h2>
+          <div class="tabs" role="tablist" id="conf-tabs">
+            <button role="tab" data-conf="West" aria-selected="true">Western Conference</button>
+            <button role="tab" data-conf="East" aria-selected="false">Eastern Conference</button>
+            <span class="tabs-indicator" id="tabs-indicator"></span>
+          </div>
+        </div>
+        <ul class="team-list" id="team-list"></ul>
+      </div>
+    </section>
+
+    <!-- ================= KADER ================= -->
+    <section class="view" id="view-roster">
+      <header class="band">
+        <div class="wrap band-inner">
+          <img class="band-logo" id="roster-logo" src="" alt="" />
+          <div>
+            <h2 class="band-title"><span class="mask"><span id="roster-title"></span></span></h2>
+            <p class="band-sub" id="roster-sub"></p>
+          </div>
+        </div>
+      </header>
+
+      <div class="wrap">
+        <div class="roster-tools">
+          <label class="search">
+            <span class="sr-only">Spieler suchen</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L21 21" /></svg>
+            <input type="search" id="player-search" placeholder="Spieler suchen" autocomplete="off" />
+          </label>
+          <p class="hint">Klick auf eine Spaltenüberschrift sortiert die Tabelle.</p>
+        </div>
+
+        <div class="roster" role="table" aria-label="Kader">
+          <div class="roster-head" role="row" id="roster-head">
+            <button role="columnheader" data-sort="playerName" class="col-name">Spieler</button>
+            <button role="columnheader" data-sort="position" class="col-pos">Pos</button>
+            <button role="columnheader" data-sort="games" class="col-num col-games">Spiele</button>
+            <button role="columnheader" data-sort="ppg" class="col-num col-main">Punkte</button>
+            <button role="columnheader" data-sort="rpg" class="col-num">Rebounds</button>
+            <button role="columnheader" data-sort="apg" class="col-num">Assists</button>
+            <button role="columnheader" data-sort="fieldPercent" class="col-num col-hide">Feldwurf</button>
+          </div>
+          <div class="roster-body" id="roster-body"></div>
+        </div>
+        <p class="status" id="roster-status" role="status"></p>
+      </div>
+    </section>
+
+    <!-- ================= SPIELER ================= -->
+    <section class="view" id="view-player">
+      <header class="band band-player">
+        <div class="wrap player-band">
+          <div class="player-photo" id="player-photo"></div>
+          <div class="player-id">
+            <p class="player-first"><span class="mask"><span id="player-first"></span></span></p>
+            <h2 class="player-last"><span class="mask"><span id="player-last"></span></span></h2>
+            <dl class="player-facts" id="player-facts"></dl>
+          </div>
+        </div>
+      </header>
+
+      <div class="wrap">
+        <div class="big-numbers" id="big-numbers"></div>
+
+        <div class="player-grid">
+          <section class="block">
+            <h3>Wurfquoten</h3>
+            <div class="rings" id="rings"></div>
+          </section>
+
+          <section class="block">
+            <h3>Rang im Team</h3>
+            <ul class="ranks" id="ranks"></ul>
+          </section>
+
+          <section class="block block-wide">
+            <h3>Saison gesamt</h3>
+            <dl class="totals" id="totals"></dl>
+          </section>
+        </div>
+
+        <nav class="player-nav" aria-label="Weitere Spieler">
+          <button class="pager" id="prev-player"></button>
+          <button class="pager pager-next" id="next-player"></button>
+        </nav>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Daten von der <a href="https://github.com/nprasad2077/nbaStats" target="_blank" rel="noopener">NBA Stats API</a>. Schulprojekt SWP1.</p>
+  </footer>
+
+  <script src="./script.js"></script>
+</body>
+</html>
